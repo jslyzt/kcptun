@@ -1,4 +1,4 @@
-# <img src="logo.png" alt="kcptun" height="54px" /> 
+# <img src="res/logo.png" alt="kcptun" height="54px" /> 
 
 [![Release][13]][14] [![Powered][17]][18] [![MIT licensed][11]][12] [![Build Status][3]][4] [![Go Report Card][5]][6] [![Downloads][15]][16] [![Docker][1]][2]
 
@@ -19,7 +19,7 @@
 [17]: https://img.shields.io/badge/KCP-Powered-blue.svg
 [18]: https://github.com/skywind3000/kcp
 
-<img src="kcptun.png" alt="kcptun" height="300px"/>
+<img src="res/kcptun.png" alt="kcptun" height="300px"/>
 
 > *kcptun maintains a single website — [github.com/xtaci/kcptun](https://github.com/xtaci/kcptun). Any websites other than [github.com/xtaci/kcptun](https://github.com/xtaci/kcptun) are not endorsed by xtaci. kcptun won't publish anything on any social media.*
 
@@ -55,7 +55,7 @@ All precompiled releases are genereated from `build-release.sh` script.
 
 ### Performance
 
-<img src="fast.png" alt="fast.com" height="256px" />       
+<img src="res/fast.png" alt="fast.com" height="256px" />       
 
 ### Basic Tuning Guide
 
@@ -84,7 +84,7 @@ All precompiled releases are genereated from `build-release.sh` script.
 
 #### Overview
 
-<p align="left"><img src="layeredparams.png" alt="params" height="450px"/></p>
+<p align="left"><img src="res/layeredparams.png" alt="params" height="450px"/></p>
 
 #### Usage
 
@@ -164,7 +164,7 @@ In coding theory, the Reed–Solomon code belongs to the class of non-binary cyc
 
 It is able to detect and correct multiple symbol errors. By adding t check symbols to the data, a Reed–Solomon code can detect any combination of up to t erroneous symbols, or correct up to ⌊t/2⌋ symbols. As an erasure code, it can correct up to t known erasures, or it can detect and correct combinations of errors and erasures. Furthermore, Reed–Solomon codes are suitable as multiple-burst bit-error correcting codes, since a sequence of b + 1 consecutive bit errors can affect at most two symbols of size b. The choice of t is up to the designer of the code, and may be selected within wide limits.
 
-![reed-solomon](rs.png)
+![reed-solomon](res/rs.png)
 
 Setting parameters of RS-Code with ```-datashard m -parityshard n``` on **BOTH** KCP Client & KCP Server **MUST** be **IDENTICAL**.
 
@@ -300,4 +300,4 @@ The parameters below **MUST** be **IDENTICAL** on **BOTH** side:
 
 Address: 0x2e4b43ab3d0983da282592571eef61ae5e60f726 , Or scan here:
 
-<img src="0x2e4b43ab3d0983da282592571eef61ae5e60f726.png" alt="kcptun" height="100px" /> 
+<img src="res/0x2e4b43ab3d0983da282592571eef61ae5e60f726.png" alt="kcptun" height="100px" /> 

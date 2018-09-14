@@ -14,9 +14,9 @@ import (
 	"golang.org/x/crypto/pbkdf2"
 
 	"github.com/golang/snappy"
+	kcp "github.com/jslyzt/kcp-go"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
-	kcp "github.com/xtaci/kcp-go"
 	"github.com/xtaci/smux"
 
 	"path/filepath"

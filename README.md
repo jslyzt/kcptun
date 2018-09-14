@@ -280,7 +280,7 @@ The parameters below **MUST** be **IDENTICAL** on **BOTH** side:
 ### References
 
 1. https://github.com/skywind3000/kcp -- KCP - A Fast and Reliable ARQ Protocol.
-1. https://github.com/xtaci/kcp-go/ -- A Production-Grade Reliable-UDP Library for golang
+1. https://github.com/jslyzt/kcp-go/ -- A Production-Grade Reliable-UDP Library for golang
 1. https://github.com/klauspost/reedsolomon -- Reed-Solomon Erasure Coding in Go.
 1. https://en.wikipedia.org/wiki/Differentiated_services -- DSCP.
 1. http://google.github.io/snappy/ -- A fast compressor/decompressor.

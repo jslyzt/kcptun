@@ -18,8 +18,8 @@ import (
 	"path/filepath"
 
 	"github.com/golang/snappy"
+	kcp "github.com/jslyzt/kcp-go"
 	"github.com/urfave/cli"
-	kcp "github.com/xtaci/kcp-go"
 	"github.com/xtaci/smux"
 )
 

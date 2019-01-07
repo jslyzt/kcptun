@@ -62,7 +62,7 @@ func (s *Stream) Read(b []byte) (n int, err error) {
 
 READ:
 	s.bufferLock.Lock()
-	n, err = s.buffer.Read(b)
+	n, _ = s.buffer.Read(b)
 	s.bufferLock.Unlock()
 
 	if n > 0 {
@@ -144,6 +144,12 @@ func (s *Stream) Close() error {
 		_, err := s.sess.writeFrame(newFrame(cmdFIN, s.id))
 		return err
 	}
+}
+
+// GetDieCh returns a readonly chan which can be readable
+// when the stream is to be closed.
+func (s *Stream) GetDieCh() <-chan struct{} {
+	return s.die
 }
 
 // SetReadDeadline sets the read deadline as defined by

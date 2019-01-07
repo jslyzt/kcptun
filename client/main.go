@@ -22,12 +22,16 @@ import (
 	"path/filepath"
 )
 
+//--------------------------------------------------------------
+
 var (
 	// VERSION is injected by buildflags
 	VERSION = "SELFBUILD"
 	// SALT is use for pbkdf2 key expansion
 	SALT = "kcp-go"
 )
+
+//--------------------------------------------------------------
 
 type compStream struct {
 	conn net.Conn
@@ -48,6 +52,8 @@ func (c *compStream) Write(p []byte) (n int, err error) {
 func (c *compStream) Close() error {
 	return c.conn.Close()
 }
+
+//--------------------------------------------------------------
 
 func newCompStream(conn net.Conn) *compStream {
 	c := new(compStream)

@@ -110,7 +110,7 @@ type (
 )
 
 // newUDPSession create a new udp session for client or server
-func newUDPSession(conv uint32, dataShards, parityShards int, l *Listener, conn net.PacketConn, remote net.Addr, block BlockCrypt) *UDPSession {
+func newUDPSession(conv uint64, dataShards, parityShards int, l *Listener, conn net.PacketConn, remote net.Addr, block BlockCrypt) *UDPSession {
 	sess := new(UDPSession)
 	sess.die = make(chan struct{})
 	sess.nonce = new(nonceAES128)
@@ -525,7 +525,9 @@ func (s *UDPSession) update() (interval time.Duration) {
 }
 
 // GetConv gets conversation id of a session
-func (s *UDPSession) GetConv() uint32 { return s.kcp.conv }
+func (s *UDPSession) GetConv() uint64 {
+	return s.kcp.conv
+}
 
 func (s *UDPSession) notifyReadEvent() {
 	select {
@@ -724,16 +726,16 @@ func (l *Listener) monitor() {
 
 					if !ok { // new session
 						if len(l.chAccepts) < cap(l.chAccepts) { // do not let the new sessions overwhelm accept queue
-							var conv uint32
+							var conv uint64
 							convValid := false
 							if l.fecDecoder != nil {
 								isfec := binary.LittleEndian.Uint16(data[4:])
 								if isfec == typeData {
-									conv = binary.LittleEndian.Uint32(data[fecHeaderSizePlus2:])
+									conv = binary.LittleEndian.Uint64(data[fecHeaderSizePlus2:])
 									convValid = true
 								}
 							} else {
-								conv = binary.LittleEndian.Uint32(data)
+								conv = binary.LittleEndian.Uint64(data)
 								convValid = true
 							}
 
@@ -912,7 +914,7 @@ func NewConn(raddr string, block BlockCrypt, dataShards, parityShards int, conn 
 		return nil, errors.Wrap(err, "net.ResolveUDPAddr")
 	}
 
-	var convid uint32
+	var convid uint64
 	binary.Read(rand.Reader, binary.LittleEndian, &convid)
 	return newUDPSession(convid, dataShards, parityShards, nil, conn, udpaddr, block), nil
 }

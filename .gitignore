@@ -16,3 +16,4 @@ _cgo_export.*
 
 client/client
 server/server
+/.idea

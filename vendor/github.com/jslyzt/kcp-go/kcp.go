@@ -70,6 +70,18 @@ func ikcpDecode32u(p []byte, l *uint32) []byte {
 	return p[4:]
 }
 
+/* encode 64 bits unsigned int (lsb) */
+func ikcpEncode64u(p []byte, l uint64) []byte {
+	binary.LittleEndian.PutUint64(p, l)
+	return p[8:]
+}
+
+/* decode 64 bits unsigned int (lsb) */
+func ikcpDecode64u(p []byte, l *uint64) []byte {
+	*l = binary.LittleEndian.Uint64(p)
+	return p[8:]
+}
+
 func _imin(a, b uint32) uint32 {
 	if a <= b {
 		return a
@@ -92,9 +104,9 @@ func _itimediff(later, earlier uint32) int32 {
 	return (int32)(later - earlier)
 }
 
-// segment defines a KCP segment
-type segment struct {
-	conv     uint32
+// Segment defines a KCP segment
+type Segment struct {
+	conv     uint64
 	cmd      uint8
 	frg      uint8
 	wnd      uint16
@@ -110,8 +122,8 @@ type segment struct {
 }
 
 // encode a segment into buffer
-func (seg *segment) encode(ptr []byte) []byte {
-	ptr = ikcpEncode32u(ptr, seg.conv)
+func (seg *Segment) encode(ptr []byte) []byte {
+	ptr = ikcpEncode64u(ptr, seg.conv)
 	ptr = ikcpEncode8u(ptr, seg.cmd)
 	ptr = ikcpEncode8u(ptr, seg.frg)
 	ptr = ikcpEncode16u(ptr, seg.wnd)
@@ -125,7 +137,8 @@ func (seg *segment) encode(ptr []byte) []byte {
 
 // KCP defines a single KCP connection
 type KCP struct {
-	conv, mtu, mss, state               uint32
+	conv                                uint64
+	mtu, mss, state                     uint32
 	sndUna, sndNxt, rcvNxt              uint32
 	ssthresh                            uint32
 	rxRttvar, rxSrtt                    int32
@@ -139,10 +152,10 @@ type KCP struct {
 	fastresend     int32
 	nocwnd, stream int32
 
-	sndQueue []segment
-	rcvQueue []segment
-	sndBuf   []segment
-	rcvBuf   []segment
+	sndQueue []*Segment
+	rcvQueue []*Segment
+	sndBuf   []*Segment
+	rcvBuf   []*Segment
 
 	acklist []ackItem
 
@@ -157,7 +170,7 @@ type ackItem struct {
 
 // NewKCP create a new kcp control object, 'conv' must equal in two endpoint
 // from the same connection.
-func NewKCP(conv uint32, output outputCallback) *KCP {
+func NewKCP(conv uint64, output outputCallback) *KCP {
 	kcp := new(KCP)
 	kcp.conv = conv
 	kcp.sndWnd = IkcpWndSnd
@@ -177,13 +190,13 @@ func NewKCP(conv uint32, output outputCallback) *KCP {
 }
 
 // newSegment creates a KCP segment
-func (kcp *KCP) newSegment(size int) (seg segment) {
+func (kcp *KCP) newSegment(size int) (seg *Segment) {
 	seg.data = xmitBuf.Get().([]byte)[:size]
 	return
 }
 
 // delSegment recycles a KCP segment
-func (kcp *KCP) delSegment(seg *segment) {
+func (kcp *KCP) delSegment(seg *Segment) {
 	if seg.data != nil {
 		xmitBuf.Put(seg.data)
 		seg.data = nil
@@ -196,7 +209,7 @@ func (kcp *KCP) PeekSize() (length int) {
 		return -1
 	}
 
-	seg := &kcp.rcvQueue[0]
+	seg := kcp.rcvQueue[0]
 	if seg.frg == 0 {
 		return len(seg.data)
 	}
@@ -205,8 +218,10 @@ func (kcp *KCP) PeekSize() (length int) {
 		return -1
 	}
 
-	for k := range kcp.rcvQueue {
-		seg := &kcp.rcvQueue[k]
+	for _, seg := range kcp.rcvQueue {
+		if seg == nil {
+			continue
+		}
 		length += len(seg.data)
 		if seg.frg == 0 {
 			break
@@ -237,8 +252,10 @@ func (kcp *KCP) Recv(buffer []byte) (n int) {
 
 	// merge fragment
 	count := 0
-	for k := range kcp.rcvQueue {
-		seg := &kcp.rcvQueue[k]
+	for _, seg := range kcp.rcvQueue {
+		if seg == nil {
+			continue
+		}
 		copy(buffer, seg.data)
 		buffer = buffer[len(seg.data):]
 		n += len(seg.data)
@@ -254,8 +271,10 @@ func (kcp *KCP) Recv(buffer []byte) (n int) {
 
 	// move available data from rcvBuf -> rcvQueue
 	count = 0
-	for k := range kcp.rcvBuf {
-		seg := &kcp.rcvBuf[k]
+	for _, seg := range kcp.rcvBuf {
+		if seg == nil {
+			continue
+		}
 		if seg.sn == kcp.rcvNxt && len(kcp.rcvQueue) < int(kcp.rcvWnd) {
 			kcp.rcvNxt++
 			count++
@@ -289,7 +308,7 @@ func (kcp *KCP) Send(buffer []byte) int {
 	if kcp.stream != 0 {
 		n := len(kcp.sndQueue)
 		if n > 0 {
-			seg := &kcp.sndQueue[n-1]
+			seg := kcp.sndQueue[n-1]
 			if len(seg.data) < int(kcp.mss) {
 				capacity := int(kcp.mss) - len(seg.data)
 				extend := capacity
@@ -372,7 +391,7 @@ func (kcp *KCP) updateAck(rtt int32) {
 
 func (kcp *KCP) shrinkBuf() {
 	if len(kcp.sndBuf) > 0 {
-		seg := &kcp.sndBuf[0]
+		seg := kcp.sndBuf[0]
 		kcp.sndUna = seg.sn
 	} else {
 		kcp.sndUna = kcp.sndNxt
@@ -384,8 +403,10 @@ func (kcp *KCP) parseAck(sn uint32) {
 		return
 	}
 
-	for k := range kcp.sndBuf {
-		seg := &kcp.sndBuf[k]
+	for _, seg := range kcp.sndBuf {
+		if seg == nil {
+			continue
+		}
 		if sn == seg.sn {
 			seg.acked = 1
 			kcp.delSegment(seg)
@@ -402,8 +423,10 @@ func (kcp *KCP) parseFastack(sn, ts uint32) {
 		return
 	}
 
-	for k := range kcp.sndBuf {
-		seg := &kcp.sndBuf[k]
+	for _, seg := range kcp.sndBuf {
+		if seg == nil {
+			continue
+		}
 		if _itimediff(sn, seg.sn) < 0 {
 			break
 		} else if sn != seg.sn && _itimediff(seg.ts, ts) <= 0 {
@@ -414,8 +437,10 @@ func (kcp *KCP) parseFastack(sn, ts uint32) {
 
 func (kcp *KCP) parseUna(una uint32) {
 	count := 0
-	for k := range kcp.sndBuf {
-		seg := &kcp.sndBuf[k]
+	for _, seg := range kcp.sndBuf {
+		if seg == nil {
+			continue
+		}
 		if _itimediff(una, seg.sn) > 0 {
 			kcp.delSegment(seg)
 			count++
@@ -434,7 +459,7 @@ func (kcp *KCP) ackPush(sn, ts uint32) {
 }
 
 // returns true if data has repeated
-func (kcp *KCP) parseData(newseg segment) bool {
+func (kcp *KCP) parseData(newseg *Segment) bool {
 	sn := newseg.sn
 	if _itimediff(sn, kcp.rcvNxt+kcp.rcvWnd) >= 0 ||
 		_itimediff(sn, kcp.rcvNxt) < 0 {
@@ -445,7 +470,7 @@ func (kcp *KCP) parseData(newseg segment) bool {
 	insertIdx := 0
 	repeat := false
 	for i := n; i >= 0; i-- {
-		seg := &kcp.rcvBuf[i]
+		seg := kcp.rcvBuf[i]
 		if seg.sn == sn {
 			repeat = true
 			break
@@ -465,7 +490,7 @@ func (kcp *KCP) parseData(newseg segment) bool {
 		if insertIdx == n+1 {
 			kcp.rcvBuf = append(kcp.rcvBuf, newseg)
 		} else {
-			kcp.rcvBuf = append(kcp.rcvBuf, segment{})
+			kcp.rcvBuf = append(kcp.rcvBuf, &Segment{})
 			copy(kcp.rcvBuf[insertIdx+1:], kcp.rcvBuf[insertIdx:])
 			kcp.rcvBuf[insertIdx] = newseg
 		}
@@ -473,8 +498,10 @@ func (kcp *KCP) parseData(newseg segment) bool {
 
 	// move available data from rcvBuf -> rcvQueue
 	count := 0
-	for k := range kcp.rcvBuf {
-		seg := &kcp.rcvBuf[k]
+	for _, seg := range kcp.rcvBuf {
+		if seg == nil {
+			continue
+		}
 		if seg.sn == kcp.rcvNxt && len(kcp.rcvQueue) < int(kcp.rcvWnd) {
 			kcp.rcvNxt++
 			count++
@@ -498,20 +525,23 @@ func (kcp *KCP) Input(data []byte, regular, ackNoDelay bool) int {
 		return -1
 	}
 
-	var latest uint32 // latest packet
-	var flag int
-	var inSegs uint64
+	var (
+		latest uint32 // latest packet
+		flag   int
+		inSegs uint64
+		conv   uint64
+
+		ts, sn, length, una uint32
+		wnd                 uint16
+		cmd, frg            uint8
+	)
 
 	for {
-		var ts, sn, length, una, conv uint32
-		var wnd uint16
-		var cmd, frg uint8
-
 		if len(data) < int(IkcpOverhead) {
 			break
 		}
 
-		data = ikcpDecode32u(data, &conv)
+		data = ikcpDecode64u(data, &conv)
 		if conv != kcp.conv {
 			return -1
 		}
@@ -554,16 +584,16 @@ func (kcp *KCP) Input(data []byte, regular, ackNoDelay bool) int {
 			if _itimediff(sn, kcp.rcvNxt+kcp.rcvWnd) < 0 {
 				kcp.ackPush(sn, ts)
 				if _itimediff(sn, kcp.rcvNxt) >= 0 {
-					var seg segment
-					seg.conv = conv
-					seg.cmd = cmd
-					seg.frg = frg
-					seg.wnd = wnd
-					seg.ts = ts
-					seg.sn = sn
-					seg.una = una
-					seg.data = data[:length] // delayed data copying
-					repeat = kcp.parseData(seg)
+					repeat = kcp.parseData(&Segment{
+						conv: conv,
+						cmd:  cmd,
+						frg:  frg,
+						wnd:  wnd,
+						ts:   ts,
+						sn:   sn,
+						una:  una,
+						data: data[:length], // delayed data copying
+					})
 				}
 			}
 			if regular && repeat {
@@ -630,11 +660,12 @@ func (kcp *KCP) wndUnused() uint16 {
 
 // flush pending data
 func (kcp *KCP) flush(ackOnly bool) uint32 {
-	var seg segment
-	seg.conv = kcp.conv
-	seg.cmd = IkcpCmdAck
-	seg.wnd = kcp.wndUnused()
-	seg.una = kcp.rcvNxt
+	seg := &Segment{
+		conv: kcp.conv,
+		cmd:  IkcpCmdAck,
+		wnd:  kcp.wndUnused(),
+		una:  kcp.rcvNxt,
+	}
 
 	buffer := kcp.buffer
 	// flush acknowledges
@@ -745,8 +776,10 @@ func (kcp *KCP) flush(ackOnly bool) uint32 {
 	minrto := int32(kcp.interval)
 
 	ref := kcp.sndBuf[:len(kcp.sndBuf)] // for bounds check elimination
-	for k := range ref {
-		segment := &ref[k]
+	for _, segment := range ref {
+		if segment == nil {
+			continue
+		}
 		needsend := false
 		if segment.acked == 1 {
 			continue
@@ -920,8 +953,10 @@ func (kcp *KCP) Check() uint32 {
 
 	tmFlush = _itimediff(tsFlush, current)
 
-	for k := range kcp.sndBuf {
-		seg := &kcp.sndBuf[k]
+	for _, seg := range kcp.sndBuf {
+		if seg == nil {
+			continue
+		}
 		diff := _itimediff(seg.resendts, current)
 		if diff <= 0 {
 			return current
@@ -1006,7 +1041,7 @@ func (kcp *KCP) WaitSnd() int {
 }
 
 // remove front n elements from queue
-func (kcp *KCP) removeFront(q []segment, n int) []segment {
+func (kcp *KCP) removeFront(q []*Segment, n int) []*Segment {
 	newn := copy(q, q[n:])
 	return q[:newn]
 }

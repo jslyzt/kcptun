@@ -23,7 +23,7 @@ const (
 	IkcpMtuDef     = 1400
 	IkcpAckFast    = 3
 	IkcpInterval   = 100
-	IkcpOverhead   = 24
+	IkcpOverhead   = 28
 	IkcpDeadlink   = 20
 	IkcpThreshInit = 2
 	IkcpThreshMin  = 2
@@ -218,12 +218,12 @@ func (kcp *KCP) PeekSize() (length int) {
 		return -1
 	}
 
-	for _, seg := range kcp.rcvQueue {
-		if seg == nil {
+	for _, sseg := range kcp.rcvQueue {
+		if sseg == nil {
 			continue
 		}
-		length += len(seg.data)
-		if seg.frg == 0 {
+		length += len(sseg.data)
+		if sseg.frg == 0 {
 			break
 		}
 	}

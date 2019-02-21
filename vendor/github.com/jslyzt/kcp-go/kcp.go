@@ -190,9 +190,10 @@ func NewKCP(conv uint64, output outputCallback) *KCP {
 }
 
 // newSegment creates a KCP segment
-func (kcp *KCP) newSegment(size int) (seg *Segment) {
-	seg.data = xmitBuf.Get().([]byte)[:size]
-	return
+func (kcp *KCP) newSegment(size int) *Segment {
+	return &Segment{
+		data: xmitBuf.Get().([]byte)[:size],
+	}
 }
 
 // delSegment recycles a KCP segment
